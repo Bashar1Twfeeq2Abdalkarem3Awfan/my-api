@@ -14,3 +14,11 @@ obj/
 
 # App settings (secrets)
 appsettings.Development.json
+
+# Environment variables (NEVER commit these)
+.env
+.env.local
+.env.production
+*.env
+
+# Note: appsettings.Production.json is tracked (uses env vars, no secrets)

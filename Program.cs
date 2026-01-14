@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MyAPIv3.Data;
 using MyAPIv3.Services;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -8,16 +9,25 @@ using System.Text;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using AspNetCoreRateLimit;
-using Microsoft.AspNetCore.HttpOverrides;
-using System.Text.Json;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ----------------------
+// Configure Kestrel for Railway (PORT environment variable)
+// ----------------------
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(int.Parse(port));
+});
+
+// ----------------------
 // Add services
+// ----------------------
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
+        // استخدام JsonNamingPolicy للتأكد من camelCase
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
@@ -29,39 +39,23 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Register JwtService
+// ----------------------
+// Register Services
+// ----------------------
 builder.Services.AddScoped<JwtService>();
-
-// Register BackupService
 builder.Services.AddScoped<BackupService>();
 
-// DbContext using DATABASE_URL if available
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-if (!string.IsNullOrEmpty(databaseUrl))
-{
-    var uri = new Uri(databaseUrl);
-    var userInfo = uri.UserInfo.Split(':');
+// ----------------------
+// DbContext
+// ----------------------
+var conn = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(conn));
 
-    var connectionString =
-        $"Host={uri.Host};" +
-        $"Port={uri.Port};" +
-        $"Database={uri.AbsolutePath.TrimStart('/')};" +
-        $"Username={userInfo[0]};" +
-        $"Password={userInfo[1]};" +
-        $"SSL Mode=Require;Trust Server Certificate=true";
-
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(connectionString));
-}
-else
-{
-    var conn = builder.Configuration.GetConnectionString("DefaultConnection");
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(conn));
-}
-
+// ----------------------
 // JWT Authentication
-var jwtSecretKey = builder.Configuration["Jwt:SecretKey"];
+// ----------------------
+var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? throw new Exception("JWT Secret Key not configured!");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "MyAPIv3";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "sass_bt_mobile";
 
@@ -74,8 +68,8 @@ builder.Services.AddAuthentication(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = false,
-        ValidateAudience = false,
+        ValidateIssuer = false,      // مؤقتاً لإختبار
+        ValidateAudience = false,    // مؤقتاً لإختبار
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtIssuer,
@@ -85,51 +79,80 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// Authorization
 builder.Services.AddAuthorization(options =>
 {
     options.FallbackPolicy = options.DefaultPolicy;
 });
 
+// ----------------------
 // Rate Limiting
-builder.Configuration.AddJsonFile("appsettings.RateLimiting.json", optional: false, reloadOnChange: true);
+// ----------------------
+builder.Configuration.AddJsonFile("appsettings.RateLimiting.json", optional: true, reloadOnChange: true);
 builder.Services.AddMemoryCache();
 builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
 builder.Services.Configure<IpRateLimitPolicies>(builder.Configuration.GetSection("IpRateLimitPolicies"));
 builder.Services.AddInMemoryRateLimiting();
 builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
 
-// CORS - Allow all origins
+// ----------------------
+// CORS - Environment-based configuration
+// ----------------------
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
+    ?? new[] { "*" };
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin()
-           .AllowAnyMethod()
-           .AllowAnyHeader();
+        if (allowedOrigins.Contains("*"))
+        {
+            // Development: Allow all origins
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        }
+        else
+        {
+            // Production: Specific origins only
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        }
     });
 });
 
+// ----------------------
+// Build app
+// ----------------------
 var app = builder.Build();
 
-// Forwarded Headers for Railway / Proxy
-app.UseForwardedHeaders(new ForwardedHeadersOptions
+// Swagger only in Development
+if (app.Environment.IsDevelopment())
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+else
+{
+    // Production: HSTS for security
+    app.UseHsts();
+    // Note: Railway handles HTTPS termination, so we don't use UseHttpsRedirection()
+}
 
-// Swagger for all environments
-app.UseSwagger();
-app.UseSwaggerUI();
-
-// app.UseHttpsRedirection(); // Disabled because Railway handles HTTPS
-app.UseHsts();
+// Enable CORS
 app.UseCors();
 
-// Rate Limiting Middleware
+// Rate Limiting
 app.UseIpRateLimiting();
 
+// Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Map controllers
 app.MapControllers();
 
+// Run app
 app.Run();
