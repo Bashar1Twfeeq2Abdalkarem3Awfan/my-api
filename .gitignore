@@ -1,0 +1,16 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Backups
+Backups/
+*.sql
+*.backup
+
+# Build outputs
+bin/
+obj/
+
+# App settings (secrets)
+appsettings.Development.json
