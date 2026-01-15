@@ -133,15 +133,13 @@ builder.Services.AddCors(options =>
 // ----------------------
 var app = builder.Build();
 
-// Swagger only in Development
-if (app.Environment.IsDevelopment())
+// Swagger - enabled in all environments for Railway
+app.UseSwagger();
+app.UseSwaggerUI();
+
+// HSTS for production
+if (!app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-else
-{
-    // Production: HSTS for security
     app.UseHsts();
     // Note: Railway handles HTTPS termination, so we don't use UseHttpsRedirection()
 }
