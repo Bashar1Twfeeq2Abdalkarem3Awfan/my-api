@@ -22,8 +22,7 @@ namespace MyAPIv3.Controllers
         // عرض ربط الأدوار بالصلاحيات يتطلب صلاحية إدارة الصلاحيات
         // Using 'manage_permissions' كصلاحية عليا لإدارة الربط
         [HttpGet]
-        [AllowAnonymous] // TEMPORARY - Remove after setup!
-        //[MyAPIv3.Attributes.RequirePermission("manage_permissions")]
+        [MyAPIv3.Attributes.RequirePermission("manage_permissions")]
         public async Task<ActionResult<IEnumerable<RolePermissionDto>>> GetRolePermissions()
         {
             var rolePermissions = await _context.RolePermissions
@@ -61,8 +60,7 @@ namespace MyAPIv3.Controllers
         // POST: api/RolePermission
         // إنشاء ربط جديد بين دور وصلاحية يتطلب 'manage_permissions'
         [HttpPost]
-        [AllowAnonymous] // TEMPORARY - Remove after setup!
-        //[MyAPIv3.Attributes.RequirePermission("manage_permissions")]
+        [MyAPIv3.Attributes.RequirePermission("manage_permissions")]
         public async Task<ActionResult<RolePermissionDto>> PostRolePermission(CreateRolePermissionDto dto)
         {
             if (!ModelState.IsValid)
@@ -119,8 +117,7 @@ namespace MyAPIv3.Controllers
         // DELETE: api/RolePermission?roleId=1&permissionId=2
         // حذف ربط دور-صلاحية يتطلب 'manage_permissions'
         [HttpDelete]
-        [AllowAnonymous] // TEMPORARY - Remove after setup!
-        //[MyAPIv3.Attributes.RequirePermission("manage_permissions")]
+        [MyAPIv3.Attributes.RequirePermission("manage_permissions")]
         public async Task<IActionResult> DeleteRolePermission(long roleId, long permissionId)
         {
             var rolePermission = await _context.RolePermissions.FindAsync(roleId, permissionId);

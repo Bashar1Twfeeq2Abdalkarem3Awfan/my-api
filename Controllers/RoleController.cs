@@ -23,8 +23,7 @@ namespace MyAPIv3.Controllers
         // هذه العملية تتطلب صلاحية 'view_roles' والتي تم تعريفها في جدول Permissions
         // وفي Flutter داخل permission_constants.dart لضمان تطابق كامل.
         [HttpGet]
-        [AllowAnonymous] // TEMPORARY - Remove after setup!
-        //[MyAPIv3.Attributes.RequirePermission("view_roles")]
+        [MyAPIv3.Attributes.RequirePermission("view_roles")]
         public async Task<ActionResult<IEnumerable<RoleDto>>> GetRoles()
         {
             var roles = await _context.Roles
@@ -44,8 +43,7 @@ namespace MyAPIv3.Controllers
         // GET: api/Role/5
         // تتطلب نفس صلاحية العرض العامة للأدوار
         [HttpGet("{id}")]
-        [AllowAnonymous] // TEMPORARY - Remove after setup!
-        //[MyAPIv3.Attributes.RequirePermission("view_roles")]
+        [MyAPIv3.Attributes.RequirePermission("view_roles")]
         public async Task<ActionResult<RoleDto>> GetRole(long id)
         {
             var role = await _context.Roles
@@ -69,8 +67,7 @@ namespace MyAPIv3.Controllers
         // POST: api/Role
         // تتطلب صلاحية إنشاء دور جديد 'create_role'
         [HttpPost]
-        [AllowAnonymous] // TEMPORARY - Remove after setup!
-        //[MyAPIv3.Attributes.RequirePermission("create_role")]
+        [MyAPIv3.Attributes.RequirePermission("create_role")]
         public async Task<ActionResult<RoleDto>> PostRole(CreateRoleDto dto)
         {
             if (!ModelState.IsValid)
@@ -102,8 +99,7 @@ namespace MyAPIv3.Controllers
         // PUT: api/Role/5
         // تتطلب صلاحية تعديل دور 'edit_role'
         [HttpPut("{id}")]
-        [AllowAnonymous] // TEMPORARY - Remove after setup!
-        //[MyAPIv3.Attributes.RequirePermission("edit_role")]
+        [MyAPIv3.Attributes.RequirePermission("edit_role")]
         public async Task<IActionResult> PutRole(long id, UpdateRoleDto dto)
         {
             if (!ModelState.IsValid)
@@ -135,8 +131,7 @@ namespace MyAPIv3.Controllers
         // DELETE: api/Role/5
         // تتطلب صلاحية حذف دور 'delete_role'
         [HttpDelete("{id}")]
-        [AllowAnonymous] // TEMPORARY - Remove after setup!
-        //[MyAPIv3.Attributes.RequirePermission("delete_role")]
+        [MyAPIv3.Attributes.RequirePermission("delete_role")]
         public async Task<IActionResult> DeleteRole(long id)
         {
             var role = await _context.Roles.FindAsync(id);
