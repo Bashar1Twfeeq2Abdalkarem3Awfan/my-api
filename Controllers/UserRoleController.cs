@@ -21,7 +21,8 @@ namespace MyAPIv3.Controllers
         // GET: api/UserRole
         // عرض ربط المستخدمين بالأدوار يتطلب على الأقل صلاحية عرض المستخدمين
         [HttpGet]
-        [MyAPIv3.Attributes.RequirePermission("view_users")]
+        [AllowAnonymous] // TEMPORARY - Remove after setup!
+        //[MyAPIv3.Attributes.RequirePermission("view_users")]
         public async Task<ActionResult<IEnumerable<UserRoleDto>>> GetUserRoles()
         {
             var userRoles = await _context.UserRoles
@@ -59,7 +60,8 @@ namespace MyAPIv3.Controllers
         // POST: api/UserRole
         // تعيين دور لمستخدم يتطلب صلاحية خاصة 'assign_roles'
         [HttpPost]
-        [MyAPIv3.Attributes.RequirePermission("assign_roles")]
+        [AllowAnonymous] // TEMPORARY - Remove after setup!
+        //[MyAPIv3.Attributes.RequirePermission("assign_roles")]
         public async Task<ActionResult<UserRoleDto>> PostUserRole(CreateUserRoleDto dto)
         {
             if (!ModelState.IsValid)
@@ -116,7 +118,8 @@ namespace MyAPIv3.Controllers
         // DELETE: api/UserRole?userId=1&roleId=2
         // إزالة دور من مستخدم يتطلب أيضاً 'assign_roles'
         [HttpDelete]
-        [MyAPIv3.Attributes.RequirePermission("assign_roles")]
+        [AllowAnonymous] // TEMPORARY - Remove after setup!
+        //[MyAPIv3.Attributes.RequirePermission("assign_roles")]
         public async Task<IActionResult> DeleteUserRole(long userId, long roleId)
         {
             var userRole = await _context.UserRoles.FindAsync(userId, roleId);

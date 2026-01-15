@@ -24,7 +24,8 @@ namespace MyAPIv3.Controllers
         // view_permissions, create_permission, edit_permission, delete_permission
         // والمتطابقة مع PermissionName في جدول Permissions وثوابت Flutter.
         [HttpGet]
-        [MyAPIv3.Attributes.RequirePermission("view_permissions")]
+        [AllowAnonymous] // TEMPORARY - Remove after setup!
+        //[MyAPIv3.Attributes.RequirePermission("view_permissions")]
         public async Task<ActionResult<IEnumerable<PermissionDto>>> GetPermissions()
         {
             var permissions = await _context.Permissions
@@ -45,7 +46,8 @@ namespace MyAPIv3.Controllers
 
         // GET: api/Permission/5
         [HttpGet("{id}")]
-        [MyAPIv3.Attributes.RequirePermission("view_permissions")]
+        [AllowAnonymous] // TEMPORARY - Remove after setup!
+        //[MyAPIv3.Attributes.RequirePermission("view_permissions")]
         public async Task<ActionResult<PermissionDto>> GetPermission(long id)
         {
             var permission = await _context.Permissions
@@ -70,7 +72,8 @@ namespace MyAPIv3.Controllers
 
         // POST: api/Permission
         [HttpPost]
-        [MyAPIv3.Attributes.RequirePermission("create_permission")]
+        [AllowAnonymous] // TEMPORARY - Remove after setup!
+        //[MyAPIv3.Attributes.RequirePermission("create_permission")]
         public async Task<ActionResult<PermissionDto>> PostPermission(CreatePermissionDto dto)
         {
             if (!ModelState.IsValid)
@@ -105,7 +108,8 @@ namespace MyAPIv3.Controllers
 
         // PUT: api/Permission/5
         [HttpPut("{id}")]
-        [MyAPIv3.Attributes.RequirePermission("edit_permission")]
+        [AllowAnonymous] // TEMPORARY - Remove after setup!
+        //[MyAPIv3.Attributes.RequirePermission("edit_permission")]
         public async Task<IActionResult> PutPermission(long id, UpdatePermissionDto dto)
         {
             if (!ModelState.IsValid)
@@ -138,7 +142,8 @@ namespace MyAPIv3.Controllers
 
         // DELETE: api/Permission/5
         [HttpDelete("{id}")]
-        [MyAPIv3.Attributes.RequirePermission("delete_permission")]
+        [AllowAnonymous] // TEMPORARY - Remove after setup!
+        //[MyAPIv3.Attributes.RequirePermission("delete_permission")]
         public async Task<IActionResult> DeletePermission(long id)
         {
             var permission = await _context.Permissions.FindAsync(id);
