@@ -194,8 +194,10 @@ Message = "اسم المستخدم أو كلمة المرور غير صحيحة"
         // ملاحظة 18/12/2025:
         // تم توحيد اسم الصلاحية هنا مع PermissionName في جدول Permissions
         // ومع ثوابت Flutter (permission_constants.dart) لضمان تطابق كامل.
+        // TEMPORARY: AllowAnonymous added to create first admin user
         [HttpPost]
-        [RequirePermission("create_user")] // ← Requires 'create_user' permission
+        [AllowAnonymous] // TEMPORARY - Remove after creating admin user!
+        //[RequirePermission("create_user")] // ← Requires 'create_user' permission
         public async Task<ActionResult<UserDto>> PostUser(CreateUserDto dto)
         {
             if (!ModelState.IsValid)
