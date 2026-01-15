@@ -58,6 +58,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") 
     ?? builder.Configuration["Jwt:SecretKey"] 
     ?? throw new Exception("JWT Secret Key not configured!");
+
+// Debug logging
+Console.WriteLine($"JWT Secret Key Length: {jwtSecretKey?.Length ?? 0}");
+Console.WriteLine($"JWT Secret Key Source: {(Environment.GetEnvironmentVariable("JWT_SECRET_KEY") != null ? "Environment Variable" : "Configuration")}");
+
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "MyAPIv3";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "sass_bt_mobile";
 
