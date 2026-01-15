@@ -62,12 +62,6 @@ var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
     ?? builder.Configuration["Jwt:SecretKey"] 
     ?? throw new Exception("JWT Secret Key not configured!");
 
-// Debug logging
-Console.WriteLine($"JWT Secret Key Length: {jwtSecretKey?.Length ?? 0}");
-Console.WriteLine($"JWT_SECRET_KEY env: {Environment.GetEnvironmentVariable("JWT_SECRET_KEY") != null}");
-Console.WriteLine($"Jwt__SecretKey env: {Environment.GetEnvironmentVariable("Jwt__SecretKey") != null}");
-Console.WriteLine($"Config Jwt:SecretKey: {builder.Configuration["Jwt:SecretKey"] != null}");
-
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "MyAPIv3";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "sass_bt_mobile";
 
