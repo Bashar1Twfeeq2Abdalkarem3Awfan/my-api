@@ -91,6 +91,43 @@ namespace MyAPIv3.Controllers
         }
 
         // ====================
+        // GET PRODUCT BY QR CODE / BARCODE
+        // ====================
+        [HttpGet("barcode/{qrCode}")]
+        [RequirePermission("view_products")]
+        public async Task<ActionResult<ProductDto>> GetProductByQrCode(string qrCode)
+        {
+            var product = await _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.ProductUnits!).ThenInclude(pu => pu.Unit)
+                .Where(p => p.QrCode == qrCode)
+                .Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    ProductName = p.ProductName,
+                    QrCode = p.QrCode,
+                    SellingPrice = p.SellingPrice,
+                    Notes = p.Notes,
+                    IsActive = p.IsActive,
+                    CategoryId = p.CategoryId,
+                    CategoryTitle = p.Category != null ? p.Category.Title : null,
+                    UnitId = p.ProductUnits!.Where(pu => pu.IsDefault).Select(pu => (long?)pu.UnitId).FirstOrDefault(),
+                    Unit = p.ProductUnits!.Where(pu => pu.IsDefault).Select(pu => new UnitDto
+                    {
+                        Id = pu.Unit!.Id,
+                        UnitName = pu.Unit.UnitName,
+                        IsActive = pu.Unit.IsActive
+                    }).FirstOrDefault()
+                })
+                .FirstOrDefaultAsync();
+
+            if (product == null)
+                return NotFound(new { message = "المنتج غير موجود في قاعدة البيانات", qrCode });
+
+            return Ok(product);
+        }
+
+        // ====================
         // CREATE PRODUCT
         // ====================
         [HttpPost]
