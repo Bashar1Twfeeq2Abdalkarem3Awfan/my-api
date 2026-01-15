@@ -86,10 +86,9 @@ builder.Services.AddAuthentication(options =>
 });
 
 // Authorization
-builder.Services.AddAuthorization(options =>
-{
-    options.FallbackPolicy = options.DefaultPolicy;
-});
+builder.Services.AddAuthorization();
+// Note: Removed FallbackPolicy to allow Swagger access
+// API endpoints are protected by [Authorize] or [RequirePermission] attributes
 
 // ----------------------
 // Rate Limiting
