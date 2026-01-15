@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyAPIv3.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251130231258_FixPersonTypeEnum")]
-    partial class FixPersonTypeEnum
+    [Migration("20260115005445_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -51,6 +51,47 @@ namespace MyAPIv3.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("category");
+                });
+
+            modelBuilder.Entity("MyAPIv3.Models.CompanySettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CommercialRegistration")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CompanyName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LogoPath")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TaxId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CompanySettings");
                 });
 
             modelBuilder.Entity("MyAPIv3.Models.Debt", b =>
@@ -400,8 +441,8 @@ namespace MyAPIv3.Migrations
                         .HasColumnName("created_at");
 
                     b.Property<string>("Email")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("email");
 
                     b.Property<string>("FirstName")
@@ -420,8 +461,8 @@ namespace MyAPIv3.Migrations
                         .HasColumnName("person_type_enum");
 
                     b.Property<string>("PhoneNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
                         .HasColumnName("phone_number");
 
                     b.Property<string>("SecondName")
@@ -430,7 +471,6 @@ namespace MyAPIv3.Migrations
                         .HasColumnName("second_name");
 
                     b.Property<string>("ThirdWithLastname")
-                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("third_with_lastname");
@@ -445,6 +485,41 @@ namespace MyAPIv3.Migrations
                         .HasDatabaseName("idx_person_name");
 
                     b.ToTable("person");
+                });
+
+            modelBuilder.Entity("MyAPIv3.Models.PrintSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FontSize")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FooterText")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PrinterType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("ShowCompanyInfo")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("ShowLogo")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PrintSettings");
                 });
 
             modelBuilder.Entity("MyAPIv3.Models.Product", b =>
@@ -571,11 +646,17 @@ namespace MyAPIv3.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("return_id");
 
+                    b.Property<long>("UnitId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("unit_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ProductId");
 
                     b.HasIndex("ReturnId");
+
+                    b.HasIndex("UnitId");
 
                     b.ToTable("return_product");
                 });
@@ -593,6 +674,10 @@ namespace MyAPIv3.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("cashier_number");
+
+                    b.Property<long?>("ClientId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("client_id");
 
                     b.Property<DateTime?>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -620,9 +705,17 @@ namespace MyAPIv3.Migrations
                         .HasColumnType("text")
                         .HasColumnName("return_type");
 
+                    b.Property<long?>("SupplierId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("supplier_id");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("ClientId");
+
                     b.HasIndex("OriginalInvoiceId");
+
+                    b.HasIndex("SupplierId");
 
                     b.ToTable("return_tbl");
                 });
@@ -913,19 +1006,39 @@ namespace MyAPIv3.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("MyAPIv3.Models.Unit", "Unit")
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Product");
 
                     b.Navigation("Return");
+
+                    b.Navigation("Unit");
                 });
 
             modelBuilder.Entity("MyAPIv3.Models.ReturnTbl", b =>
                 {
+                    b.HasOne("MyAPIv3.Models.Person", "Client")
+                        .WithMany("ReturnsAsClient")
+                        .HasForeignKey("ClientId");
+
                     b.HasOne("MyAPIv3.Models.Invoice", "OriginalInvoice")
                         .WithMany()
                         .HasForeignKey("OriginalInvoiceId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("MyAPIv3.Models.Person", "Supplier")
+                        .WithMany("ReturnsAsSupplier")
+                        .HasForeignKey("SupplierId");
+
+                    b.Navigation("Client");
+
                     b.Navigation("OriginalInvoice");
+
+                    b.Navigation("Supplier");
                 });
 
             modelBuilder.Entity("MyAPIv3.Models.RolePermission", b =>
@@ -1005,6 +1118,10 @@ namespace MyAPIv3.Migrations
                     b.Navigation("DebtsCreated");
 
                     b.Navigation("ExpensesCreated");
+
+                    b.Navigation("ReturnsAsClient");
+
+                    b.Navigation("ReturnsAsSupplier");
 
                     b.Navigation("SupplierInvoices");
 
