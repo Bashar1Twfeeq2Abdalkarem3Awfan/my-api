@@ -239,14 +239,44 @@ namespace MyAPIv3.Controllers
                 // Add returned products (with UnitId)
                 if (dto.ReturnProducts != null && dto.ReturnProducts.Any())
                 {
+                    // محاولة جلب الفاتورة الأصلية للحصول على الأسعار
+                    List<InvoiceProduct> originalInvoiceProducts = new List<InvoiceProduct>();
+                    if (dto.OriginalInvoiceId.HasValue)
+                    {
+                        var originalInvoice = await _context.Invoices
+                            .Include(i => i.InvoiceProducts)
+                            .FirstOrDefaultAsync(i => i.Id == dto.OriginalInvoiceId.Value);
+                            
+                        if (originalInvoice?.InvoiceProducts != null)
+                        {
+                            originalInvoiceProducts = originalInvoice.InvoiceProducts.ToList();
+                        }
+                    }
+
                     foreach (var rpDto in dto.ReturnProducts)
                     {
+                        decimal? unitPrice = null;
+                        
+                        // البحث عن السعر في الفاتورة الأصلية
+                        if (originalInvoiceProducts.Any())
+                        {
+                            var originalItem = originalInvoiceProducts
+                                .FirstOrDefault(ip => ip.ProductId == rpDto.ProductId && ip.UnitId == rpDto.UnitId);
+                                
+                            if (originalItem != null && originalItem.Quantity != 0)
+                            {
+                                // حساب السعر الإفرادي: المجموع الفرعي / الكمية
+                                unitPrice = originalItem.Subtotal / originalItem.Quantity;
+                            }
+                        }
+
                         returnTbl.ReturnProducts.Add(new ReturnProduct
                         {
                             ProductId = rpDto.ProductId,
                             UnitId = rpDto.UnitId, // ← إضافة جديدة
                             Quantity = rpDto.Quantity,
-                            Notes = rpDto.Notes
+                            Notes = rpDto.Notes,
+                            UnitPrice = unitPrice // ← تعيين السعر
                         });
                     }
                 }
