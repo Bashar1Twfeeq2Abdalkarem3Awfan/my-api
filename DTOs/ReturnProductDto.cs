@@ -12,6 +12,9 @@ namespace MyAPIv3.DTOs
         public decimal Quantity { get; set; }
         public string? Notes { get; set; }
         
+        // للحساب والعرض
+        public decimal? UnitPrice { get; set; }
+        
         // Navigation للعرض
         public string? ProductName { get; set; }
         

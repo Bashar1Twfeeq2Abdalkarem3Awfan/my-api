@@ -31,6 +31,10 @@ namespace MyAPIv3.Models
         [Precision(14, 2)]
         public decimal Quantity { get; set; }
 
+        [Column("unit_price")]
+        [Precision(14, 2)]
+        public decimal? UnitPrice { get; set; }
+
         [Column("notes")]
         public string? Notes { get; set; }
 

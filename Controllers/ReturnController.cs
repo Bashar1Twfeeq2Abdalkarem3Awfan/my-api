@@ -75,11 +75,12 @@ namespace MyAPIv3.Controllers
                         Id = rp.Id,
                         ReturnId = rp.ReturnId,
                         ProductId = rp.ProductId,
-                        UnitId = rp.UnitId, // ← إضافة جديدة
+                        UnitId = rp.UnitId,
                         Quantity = rp.Quantity,
                         Notes = rp.Notes,
+                        UnitPrice = rp.UnitPrice,
                         ProductName = rp.Product != null ? rp.Product.ProductName : null,
-                        UnitName = rp.Unit != null ? rp.Unit.UnitName : null // ← إضافة جديدة
+                        UnitName = rp.Unit != null ? rp.Unit.UnitName : null
                     }).ToList() : null
                 })
                 .ToListAsync();
@@ -140,11 +141,12 @@ namespace MyAPIv3.Controllers
                         Id = rp.Id,
                         ReturnId = rp.ReturnId,
                         ProductId = rp.ProductId,
-                        UnitId = rp.UnitId, // ← إضافة جديدة
+                        UnitId = rp.UnitId,
                         Quantity = rp.Quantity,
                         Notes = rp.Notes,
+                        UnitPrice = rp.UnitPrice,
                         ProductName = rp.Product != null ? rp.Product.ProductName : null,
-                        UnitName = rp.Unit != null ? rp.Unit.UnitName : null // ← إضافة جديدة
+                        UnitName = rp.Unit != null ? rp.Unit.UnitName : null
                     }).ToList() : null
                 })
                 .FirstOrDefaultAsync();
@@ -464,6 +466,7 @@ namespace MyAPIv3.Controllers
                         UnitId = rp.UnitId,
                         Quantity = rp.Quantity,
                         Notes = rp.Notes,
+                        UnitPrice = rp.UnitPrice,
                         ProductName = rp.Product != null ? rp.Product.ProductName : null,
                         UnitName = rp.Unit != null ? rp.Unit.UnitName : null
                     }).ToList() : null
