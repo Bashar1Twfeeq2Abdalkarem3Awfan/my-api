@@ -155,6 +155,44 @@ namespace MyAPIv3.Controllers
             return Ok(returnTbl);
         }
 
+        // GET: api/Return/invoice/{invoiceId}/returned-quantities
+        /// <summary>
+        /// الحصول على الكميات المرتجعة لكل منتج من فاتورة معينة
+        /// Get returned quantities per product from a specific invoice
+        /// </summary>
+        [HttpGet("invoice/{invoiceId}/returned-quantities")]
+        [RequirePermission("view_returns")]
+        public async Task<ActionResult<IEnumerable<ReturnedQuantityDto>>> GetReturnedQuantitiesByInvoice(long invoiceId)
+        {
+            // جلب جميع المرتجعات المرتبطة بهذه الفاتورة
+            // Get all returns linked to this invoice
+            var returns = await _context.Returns
+                .Where(r => r.OriginalInvoiceId == invoiceId)
+                .Include(r => r.ReturnProducts)
+                    .ThenInclude(rp => rp.Product)
+                .Include(r => r.ReturnProducts)
+                    .ThenInclude(rp => rp.Unit)
+                .ToListAsync();
+
+            // حساب إجمالي الكميات المرتجعة لكل منتج (ProductId + UnitId)
+            // Calculate total returned quantities per product (ProductId + UnitId)
+            var returnedQuantities = returns
+                .SelectMany(r => r.ReturnProducts ?? new List<ReturnProduct>())
+                .GroupBy(rp => new { rp.ProductId, rp.UnitId })
+                .Select(g => new ReturnedQuantityDto
+                {
+                    ProductId = g.Key.ProductId,
+                    UnitId = g.Key.UnitId,
+                    TotalReturnedQuantity = g.Sum(rp => rp.Quantity),
+                    ProductName = g.First().Product?.ProductName,
+                    UnitName = g.First().Unit?.UnitName
+                })
+                .ToList();
+
+            return Ok(returnedQuantities);
+        }
+
+
         // POST: api/Return
         [HttpPost]
         [RequirePermission("create_return")]
