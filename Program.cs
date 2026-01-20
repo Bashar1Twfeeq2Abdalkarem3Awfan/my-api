@@ -133,6 +133,36 @@ builder.Services.AddCors(options =>
 // ----------------------
 var app = builder.Build();
 
+// ----------------------
+// Auto-apply migrations on startup (for Railway)
+// ----------------------
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<AppDbContext>();
+        
+        // Apply any pending migrations automatically
+        if (context.Database.GetPendingMigrations().Any())
+        {
+            Console.WriteLine("Applying pending migrations...");
+            context.Database.Migrate();
+            Console.WriteLine("Migrations applied successfully!");
+        }
+        else
+        {
+            Console.WriteLine("Database is up to date.");
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating the database.");
+        // Don't throw - let the app start even if migration fails
+    }
+}
+
 // Swagger - enabled in all environments for Railway
 app.UseSwagger();
 app.UseSwaggerUI();
