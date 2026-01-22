@@ -44,6 +44,7 @@ builder.Services.AddSwaggerGen();
 // ----------------------
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<BackupService>();
+builder.Services.AddScoped<DatabaseSeeder>(); // ✨ تسجيل خدمة الـ Seeder
 
 // ----------------------
 // DbContext
@@ -154,12 +155,16 @@ using (var scope = app.Services.CreateScope())
         {
             Console.WriteLine("Database is up to date.");
         }
+
+        // ✨ تشغيل الـ Seeder لإنشاء البيانات الأولية
+        var seeder = services.GetRequiredService<DatabaseSeeder>();
+        await seeder.SeedAsync();
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating the database.");
-        // Don't throw - let the app start even if migration fails
+        logger.LogError(ex, "An error occurred while initializing the database.");
+        // Don't throw - let the app start even if initialization fails
     }
 }
 
