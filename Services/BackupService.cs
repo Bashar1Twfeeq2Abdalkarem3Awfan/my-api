@@ -87,9 +87,12 @@ namespace MyAPIv3.Services
         /// <summary>
         /// استعادة قاعدة البيانات من نسخة احتياطية
         /// Restore database from backup file using Npgsql
+        /// ✨ يستخدم Transaction لحماية البيانات - إما تنجح العملية كاملة أو يتم إلغاؤها
         /// </summary>
         public async Task RestoreBackupAsync(string backupFilePath)
         {
+            NpgsqlTransaction? transaction = null;
+            
             try
             {
                 if (!File.Exists(backupFilePath))
@@ -104,55 +107,70 @@ namespace MyAPIv3.Services
                 {
                     await connection.OpenAsync();
                     
-                    // ✨ الخطوة 1: حذف جميع البيانات من كل الجداول
-                    var tables = await GetAllTablesAsync(connection);
+                    // 🔒 بدء Transaction - لحماية البيانات
+                    transaction = await connection.BeginTransactionAsync();
                     
-                    // حذف البيانات بترتيب عكسي لتجنب مشاكل Foreign Keys
-                    foreach (var table in tables.AsEnumerable().Reverse())
+                    try
                     {
-                        try
-                        {
-                            using (var truncateCmd = new NpgsqlCommand($"TRUNCATE TABLE \"{table}\" RESTART IDENTITY CASCADE;", connection))
-                            {
-                                await truncateCmd.ExecuteNonQueryAsync();
-                            }
-                        }
-                        catch
-                        {
-                            // إذا فشل TRUNCATE، جرب DELETE
-                            using (var deleteCmd = new NpgsqlCommand($"DELETE FROM \"{table}\";", connection))
-                            {
-                                await deleteCmd.ExecuteNonQueryAsync();
-                            }
-                        }
-                    }
-                    
-                    // ✨ الخطوة 2: تنفيذ SQL من ملف النسخة الاحتياطية
-                    var statements = sqlContent
-                        .Split(new[] { ";\r\n", ";\n" }, StringSplitOptions.RemoveEmptyEntries)
-                        .Where(s => !string.IsNullOrWhiteSpace(s) && !s.TrimStart().StartsWith("--"));
-
-                    foreach (var statement in statements)
-                    {
-                        var trimmedStatement = statement.Trim();
-                        if (!string.IsNullOrEmpty(trimmedStatement))
+                        // ✨ الخطوة 1: حذف جميع البيانات من كل الجداول
+                        var tables = await GetAllTablesAsync(connection);
+                        
+                        // حذف البيانات بترتيب عكسي لتجنب مشاكل Foreign Keys
+                        foreach (var table in tables.AsEnumerable().Reverse())
                         {
                             try
                             {
-                                using (var command = new NpgsqlCommand(trimmedStatement + ";", connection))
+                                using (var truncateCmd = new NpgsqlCommand($"TRUNCATE TABLE \"{table}\" RESTART IDENTITY CASCADE;", connection, transaction))
                                 {
-                                    await command.ExecuteNonQueryAsync();
+                                    await truncateCmd.ExecuteNonQueryAsync();
                                 }
                             }
-                            catch (Exception ex)
+                            catch
                             {
-                                // تجاهل أخطاء TRUNCATE المكررة من ملف الـ backup
-                                if (!ex.Message.Contains("TRUNCATE") && !ex.Message.Contains("does not exist"))
+                                // إذا فشل TRUNCATE، جرب DELETE
+                                using (var deleteCmd = new NpgsqlCommand($"DELETE FROM \"{table}\";", connection, transaction))
                                 {
-                                    throw;
+                                    await deleteCmd.ExecuteNonQueryAsync();
                                 }
                             }
                         }
+                        
+                        // ✨ الخطوة 2: تنفيذ SQL من ملف النسخة الاحتياطية
+                        var statements = sqlContent
+                            .Split(new[] { ";\r\n", ";\n" }, StringSplitOptions.RemoveEmptyEntries)
+                            .Where(s => !string.IsNullOrWhiteSpace(s) && !s.TrimStart().StartsWith("--"));
+
+                        foreach (var statement in statements)
+                        {
+                            var trimmedStatement = statement.Trim();
+                            if (!string.IsNullOrEmpty(trimmedStatement))
+                            {
+                                try
+                                {
+                                    using (var command = new NpgsqlCommand(trimmedStatement + ";", connection, transaction))
+                                    {
+                                        await command.ExecuteNonQueryAsync();
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    // تجاهل أخطاء TRUNCATE المكررة من ملف الـ backup
+                                    if (!ex.Message.Contains("TRUNCATE") && !ex.Message.Contains("does not exist"))
+                                    {
+                                        throw;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // ✅ إذا وصلنا هنا، كل شيء نجح - نؤكد التغييرات
+                        await transaction.CommitAsync();
+                    }
+                    catch
+                    {
+                        // ❌ إذا حدث أي خطأ، نلغي كل التغييرات
+                        await transaction.RollbackAsync();
+                        throw;
                     }
                 }
             }
