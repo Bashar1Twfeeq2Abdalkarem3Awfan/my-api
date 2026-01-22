@@ -104,7 +104,30 @@ namespace MyAPIv3.Services
                 {
                     await connection.OpenAsync();
                     
-                    // Split SQL statements
+                    // ✨ الخطوة 1: حذف جميع البيانات من كل الجداول
+                    var tables = await GetAllTablesAsync(connection);
+                    
+                    // حذف البيانات بترتيب عكسي لتجنب مشاكل Foreign Keys
+                    foreach (var table in tables.AsEnumerable().Reverse())
+                    {
+                        try
+                        {
+                            using (var truncateCmd = new NpgsqlCommand($"TRUNCATE TABLE \"{table}\" RESTART IDENTITY CASCADE;", connection))
+                            {
+                                await truncateCmd.ExecuteNonQueryAsync();
+                            }
+                        }
+                        catch
+                        {
+                            // إذا فشل TRUNCATE، جرب DELETE
+                            using (var deleteCmd = new NpgsqlCommand($"DELETE FROM \"{table}\";", connection))
+                            {
+                                await deleteCmd.ExecuteNonQueryAsync();
+                            }
+                        }
+                    }
+                    
+                    // ✨ الخطوة 2: تنفيذ SQL من ملف النسخة الاحتياطية
                     var statements = sqlContent
                         .Split(new[] { ";\r\n", ";\n" }, StringSplitOptions.RemoveEmptyEntries)
                         .Where(s => !string.IsNullOrWhiteSpace(s) && !s.TrimStart().StartsWith("--"));
@@ -114,9 +137,20 @@ namespace MyAPIv3.Services
                         var trimmedStatement = statement.Trim();
                         if (!string.IsNullOrEmpty(trimmedStatement))
                         {
-                            using (var command = new NpgsqlCommand(trimmedStatement + ";", connection))
+                            try
                             {
-                                await command.ExecuteNonQueryAsync();
+                                using (var command = new NpgsqlCommand(trimmedStatement + ";", connection))
+                                {
+                                    await command.ExecuteNonQueryAsync();
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                // تجاهل أخطاء TRUNCATE المكررة من ملف الـ backup
+                                if (!ex.Message.Contains("TRUNCATE") && !ex.Message.Contains("does not exist"))
+                                {
+                                    throw;
+                                }
                             }
                         }
                     }
