@@ -60,6 +60,7 @@ namespace MyAPIv3.Services
             {
                 FirstName = "Admin",
                 SecondName = "System",
+                ThirdWithLastname = "User", // ✨ إصلاح مشكلة Flutter Crash
                 PhoneNumber = "0000000000",
                 Email = "admin@system.com",
                 Address = "System",
