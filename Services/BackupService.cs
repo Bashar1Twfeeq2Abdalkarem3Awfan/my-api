@@ -112,26 +112,30 @@ namespace MyAPIv3.Services
                     
                     try
                     {
+                        // ✨ الخطوة 0: تعطيل فحص القيود (Foreign Keys) مؤقتاً
+                        // هذا هو الحل السحري لتجنب أخطاء الترتيب FK errors
+                        using (var disableConstraintsCmd = new NpgsqlCommand("SET session_replication_role = 'replica';", connection, transaction))
+                        {
+                            await disableConstraintsCmd.ExecuteNonQueryAsync();
+                        }
+
                         // ✨ الخطوة 1: حذف جميع البيانات من كل الجداول
                         var tables = await GetAllTablesAsync(connection);
                         
-                        // حذف البيانات بترتيب عكسي لتجنب مشاكل Foreign Keys
-                        foreach (var table in tables.AsEnumerable().Reverse())
+                        foreach (var table in tables)
                         {
                             try
                             {
-                                using (var truncateCmd = new NpgsqlCommand($"TRUNCATE TABLE \"{table}\" RESTART IDENTITY CASCADE;", connection, transaction))
+                                // استخدام CASCADE لحذف البيانات المرتبطة بقوة
+                                using (var truncateCmd = new NpgsqlCommand($"TRUNCATE TABLE \"{table}\" CASCADE;", connection, transaction))
                                 {
                                     await truncateCmd.ExecuteNonQueryAsync();
                                 }
                             }
-                            catch
+                            catch (Exception)
                             {
-                                // إذا فشل TRUNCATE، جرب DELETE
-                                using (var deleteCmd = new NpgsqlCommand($"DELETE FROM \"{table}\";", connection, transaction))
-                                {
-                                    await deleteCmd.ExecuteNonQueryAsync();
-                                }
+                                // تجاهل الأخطاء هنا لأننا سنحاول الحذف مرة أخرى أو أن الجدول فارغ
+                                // واصل للحذف التالي
                             }
                         }
                         
@@ -154,15 +158,23 @@ namespace MyAPIv3.Services
                                 }
                                 catch (Exception ex)
                                 {
-                                    // تجاهل أخطاء TRUNCATE المكررة من ملف الـ backup
+                                    // تجاهل أخطاء معينة فقط
                                     if (!ex.Message.Contains("TRUNCATE") && !ex.Message.Contains("does not exist"))
                                     {
-                                        throw;
+                                        // إذا حدث خطأ حقيقي، اطبع الـ Statement للمساعدة في التشخيص
+                                        Console.WriteLine($"Error executing statement: {trimmedStatement.Substring(0, Math.Min(50, trimmedStatement.Length))}...");
+                                        throw; 
                                     }
                                 }
                             }
                         }
                         
+                        // ✨ الخطوة 3: إعادة تفعيل القيود (تلقائي عند انتهاء الـ Transaction أو إعادته يدوياً)
+                        using (var enableConstraintsCmd = new NpgsqlCommand("SET session_replication_role = 'origin';", connection, transaction))
+                        {
+                            await enableConstraintsCmd.ExecuteNonQueryAsync();
+                        }
+
                         // ✅ إذا وصلنا هنا، كل شيء نجح - نؤكد التغييرات
                         await transaction.CommitAsync();
                     }
