@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MyAPIv3.Data;
+using MyAPIv3.Models; // ✨ for User
 using MyAPIv3.Services;
+using Microsoft.AspNetCore.Identity; // ✨ for IPasswordHasher
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -44,7 +46,8 @@ builder.Services.AddSwaggerGen();
 // ----------------------
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<BackupService>();
-builder.Services.AddScoped<DatabaseSeeder>(); // ✨ تسجيل خدمة الـ Seeder
+builder.Services.AddScoped<DatabaseSeeder>();
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>(); // ✨ تسجيل خدمة تشفير كلمات المرور
 
 // ----------------------
 // DbContext
