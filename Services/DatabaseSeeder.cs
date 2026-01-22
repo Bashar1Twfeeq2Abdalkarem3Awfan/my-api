@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MyAPIv3.Data;
 using MyAPIv3.Models;
+using MyAPIv3.Helpers;
 
 namespace MyAPIv3.Services
 {
@@ -12,12 +12,10 @@ namespace MyAPIv3.Services
     public class DatabaseSeeder
     {
         private readonly AppDbContext _context;
-        private readonly IPasswordHasher<User> _passwordHasher;
 
-        public DatabaseSeeder(AppDbContext context, IPasswordHasher<User> passwordHasher)
+        public DatabaseSeeder(AppDbContext context)
         {
             _context = context;
-            _passwordHasher = passwordHasher;
         }
 
         /// <summary>
@@ -78,7 +76,8 @@ namespace MyAPIv3.Services
             };
             
             // تشفير كلمة المرور: admin123
-            adminUser.PasswordHash = _passwordHasher.HashPassword(adminUser, "admin123");
+            // ✨ استخدام PasswordHelper للحصول على BCrypt Hash متوافق
+            adminUser.PasswordHash = PasswordHelper.HashPassword("admin123");
             
             await _context.Users.AddAsync(adminUser);
             await _context.SaveChangesAsync();

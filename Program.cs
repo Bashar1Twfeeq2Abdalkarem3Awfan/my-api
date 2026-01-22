@@ -47,7 +47,6 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<BackupService>();
 builder.Services.AddScoped<DatabaseSeeder>();
-builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>(); // ✨ تسجيل خدمة تشفير كلمات المرور
 
 // ----------------------
 // DbContext
