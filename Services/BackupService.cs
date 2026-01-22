@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using System.Text;
 using Npgsql;
 
 namespace MyAPIv3.Services
@@ -6,6 +6,7 @@ namespace MyAPIv3.Services
     /// <summary>
     /// خدمة النسخ الاحتياطي والاستعادة
     /// Backup and Restore Service for PostgreSQL Database
+    /// ✨ يعمل على Railway وجميع خدمات الاستضافة السحابية
     /// </summary>
     public class BackupService
     {
@@ -28,63 +29,51 @@ namespace MyAPIv3.Services
 
         /// <summary>
         /// إنشاء نسخة احتياطية من قاعدة البيانات
-        /// Create database backup using pg_dump
+        /// Create database backup using Npgsql (works on Railway!)
         /// </summary>
         public async Task<string> CreateBackupAsync()
         {
             try
             {
-                // الحصول على معلومات الاتصال
                 var connectionString = _configuration.GetConnectionString("DefaultConnection");
-                var builder = new NpgsqlConnectionStringBuilder(connectionString);
-
+                
                 // اسم الملف بالتاريخ والوقت
                 var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 var fileName = $"backup_{timestamp}.sql";
                 var backupPath = Path.Combine(_backupDirectory, fileName);
 
-                // تجهيز pg_dump command
-                var pgDumpPath = GetPgDumpPath();
-                
-                // Arguments لـ pg_dump
-                var arguments = $"-h {builder.Host} " +
-                              $"-p {builder.Port} " +
-                              $"-U {builder.Username} " +
-                              $"-d {builder.Database} " +
-                              $"-F p " + // plain text SQL format
-                              $"--no-owner " + // don't dump ownership commands
-                              $"--no-privileges " + // don't dump privileges
-                              $"-f \"{backupPath}\"";
-
-                // تشغيل pg_dump
-                var processInfo = new ProcessStartInfo
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    FileName = pgDumpPath,
-                    Arguments = arguments,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                // إضافة كلمة المرور كـ environment variable
-                processInfo.EnvironmentVariables["PGPASSWORD"] = builder.Password;
-
-                using (var process = Process.Start(processInfo))
-                {
-                    if (process == null)
+                    await connection.OpenAsync();
+                    
+                    var sqlBuilder = new StringBuilder();
+                    
+                    // Header
+                    sqlBuilder.AppendLine("-- PostgreSQL Database Backup");
+                    sqlBuilder.AppendLine($"-- Created: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                    sqlBuilder.AppendLine($"-- Database: {connection.Database}");
+                    sqlBuilder.AppendLine();
+                    
+                    // Get all tables
+                    var tables = await GetAllTablesAsync(connection);
+                    
+                    foreach (var table in tables)
                     {
-                        throw new Exception("فشل في بدء عملية النسخ الاحتياطي");
+                        sqlBuilder.AppendLine($"-- Table: {table}");
+                        sqlBuilder.AppendLine($"TRUNCATE TABLE \"{table}\" CASCADE;");
+                        sqlBuilder.AppendLine();
+                        
+                        // Get table data
+                        var tableData = await GetTableDataAsync(connection, table);
+                        if (!string.IsNullOrEmpty(tableData))
+                        {
+                            sqlBuilder.AppendLine(tableData);
+                            sqlBuilder.AppendLine();
+                        }
                     }
-
-                    // قراءة الأخطاء إن وجدت
-                    var error = await process.StandardError.ReadToEndAsync();
-                    await process.WaitForExitAsync();
-
-                    if (process.ExitCode != 0)
-                    {
-                        throw new Exception($"فشل النسخ الاحتياطي: {error}");
-                    }
+                    
+                    // Write to file
+                    await File.WriteAllTextAsync(backupPath, sqlBuilder.ToString(), Encoding.UTF8);
                 }
 
                 return backupPath;
@@ -97,7 +86,7 @@ namespace MyAPIv3.Services
 
         /// <summary>
         /// استعادة قاعدة البيانات من نسخة احتياطية
-        /// Restore database from backup file using psql
+        /// Restore database from backup file using Npgsql
         /// </summary>
         public async Task RestoreBackupAsync(string backupFilePath)
         {
@@ -108,47 +97,28 @@ namespace MyAPIv3.Services
                     throw new FileNotFoundException("ملف النسخة الاحتياطية غير موجود");
                 }
 
-                // الحصول على معلومات الاتصال
                 var connectionString = _configuration.GetConnectionString("DefaultConnection");
-                var builder = new NpgsqlConnectionStringBuilder(connectionString);
+                var sqlContent = await File.ReadAllTextAsync(backupFilePath, Encoding.UTF8);
 
-                // تجهيز psql command
-                var psqlPath = GetPsqlPath();
-
-                // Arguments لـ psql
-                var arguments = $"-h {builder.Host} " +
-                              $"-p {builder.Port} " +
-                              $"-U {builder.Username} " +
-                              $"-d {builder.Database} " +
-                              $"-f \"{backupFilePath}\"";
-
-                // تشغيل psql
-                var processInfo = new ProcessStartInfo
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    FileName = psqlPath,
-                    Arguments = arguments,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
+                    await connection.OpenAsync();
+                    
+                    // Split SQL statements
+                    var statements = sqlContent
+                        .Split(new[] { ";\r\n", ";\n" }, StringSplitOptions.RemoveEmptyEntries)
+                        .Where(s => !string.IsNullOrWhiteSpace(s) && !s.TrimStart().StartsWith("--"));
 
-                // إضافة كلمة المرور
-                processInfo.EnvironmentVariables["PGPASSWORD"] = builder.Password;
-
-                using (var process = Process.Start(processInfo))
-                {
-                    if (process == null)
+                    foreach (var statement in statements)
                     {
-                        throw new Exception("فشل في بدء عملية الاستعادة");
-                    }
-
-                    var error = await process.StandardError.ReadToEndAsync();
-                    await process.WaitForExitAsync();
-
-                    if (process.ExitCode != 0)
-                    {
-                        throw new Exception($"فشل الاستعادة: {error}");
+                        var trimmedStatement = statement.Trim();
+                        if (!string.IsNullOrEmpty(trimmedStatement))
+                        {
+                            using (var command = new NpgsqlCommand(trimmedStatement + ";", connection))
+                            {
+                                await command.ExecuteNonQueryAsync();
+                            }
+                        }
                     }
                 }
             }
@@ -156,6 +126,134 @@ namespace MyAPIv3.Services
             {
                 throw new Exception($"خطأ في استعادة النسخة الاحتياطية: {ex.Message}", ex);
             }
+        }
+
+        /// <summary>
+        /// الحصول على قائمة جميع الجداول
+        /// Get all table names from database
+        /// </summary>
+        private async Task<List<string>> GetAllTablesAsync(NpgsqlConnection connection)
+        {
+            var tables = new List<string>();
+            
+            var query = @"
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_type = 'BASE TABLE'
+                ORDER BY table_name;";
+
+            using (var command = new NpgsqlCommand(query, connection))
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    tables.Add(reader.GetString(0));
+                }
+            }
+
+            return tables;
+        }
+
+        /// <summary>
+        /// الحصول على بيانات جدول معين
+        /// Get data from a specific table as INSERT statements
+        /// </summary>
+        private async Task<string> GetTableDataAsync(NpgsqlConnection connection, string tableName)
+        {
+            var sqlBuilder = new StringBuilder();
+            
+            // Get column names
+            var columns = await GetTableColumnsAsync(connection, tableName);
+            if (columns.Count == 0) return string.Empty;
+
+            // Get data
+            var selectQuery = $"SELECT * FROM \"{tableName}\";";
+            using (var command = new NpgsqlCommand(selectQuery, connection))
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    var values = new List<string>();
+                    
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        if (reader.IsDBNull(i))
+                        {
+                            values.Add("NULL");
+                        }
+                        else
+                        {
+                            var value = reader.GetValue(i);
+                            var formattedValue = FormatSqlValue(value);
+                            values.Add(formattedValue);
+                        }
+                    }
+
+                    var columnNames = string.Join(", ", columns.Select(c => $"\"{c}\""));
+                    var valuesList = string.Join(", ", values);
+                    
+                    sqlBuilder.AppendLine($"INSERT INTO \"{tableName}\" ({columnNames}) VALUES ({valuesList});");
+                }
+            }
+
+            return sqlBuilder.ToString();
+        }
+
+        /// <summary>
+        /// الحصول على أسماء أعمدة جدول
+        /// Get column names for a table
+        /// </summary>
+        private async Task<List<string>> GetTableColumnsAsync(NpgsqlConnection connection, string tableName)
+        {
+            var columns = new List<string>();
+            
+            var query = @"
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_schema = 'public' 
+                AND table_name = @tableName
+                ORDER BY ordinal_position;";
+
+            using (var command = new NpgsqlCommand(query, connection))
+            {
+                command.Parameters.AddWithValue("tableName", tableName);
+                
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        columns.Add(reader.GetString(0));
+                    }
+                }
+            }
+
+            return columns;
+        }
+
+        /// <summary>
+        /// تنسيق القيمة للاستخدام في SQL
+        /// Format value for SQL statement
+        /// </summary>
+        private string FormatSqlValue(object value)
+        {
+            if (value == null || value is DBNull)
+                return "NULL";
+
+            if (value is string str)
+                return $"'{str.Replace("'", "''")}'";
+
+            if (value is DateTime dt)
+                return $"'{dt:yyyy-MM-dd HH:mm:ss}'";
+
+            if (value is bool b)
+                return b ? "TRUE" : "FALSE";
+
+            if (value is byte[] bytes)
+                return $"'\\x{BitConverter.ToString(bytes).Replace("-", "")}'";
+
+            // Numbers and other types
+            return value.ToString()!;
         }
 
         /// <summary>
@@ -201,127 +299,6 @@ namespace MyAPIv3.Services
             {
                 File.Delete(filePath);
             }
-        }
-
-        /// <summary>
-        /// الحصول على مسار pg_dump
-        /// Get pg_dump executable path
-        /// </summary>
-        private string GetPgDumpPath()
-        {
-            // 1. محاولة في PATH أولاً
-            try
-            {
-                var testProcess = new ProcessStartInfo
-                {
-                    FileName = "pg_dump",
-                    Arguments = "--version",
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                
-                using (var process = Process.Start(testProcess))
-                {
-                    if (process != null)
-                    {
-                        process.WaitForExit();
-                        if (process.ExitCode == 0)
-                        {
-                            return "pg_dump";
-                        }
-                    }
-                }
-            }
-            catch { }
-
-            // 2. البحث في مجلدات PostgreSQL
-            var basePaths = new[]
-            {
-                @"C:\Program Files\PostgreSQL",
-                @"C:\Program Files (x86)\PostgreSQL"
-            };
-
-            foreach (var basePath in basePaths)
-            {
-                if (Directory.Exists(basePath))
-                {
-                    // البحث في جميع الإصدارات
-                    var versionDirs = Directory.GetDirectories(basePath)
-                        .OrderByDescending(d => d); // أحدث إصدار أولاً
-
-                    foreach (var versionDir in versionDirs)
-                    {
-                        var pgDumpPath = Path.Combine(versionDir, "bin", "pg_dump.exe");
-                        if (File.Exists(pgDumpPath))
-                        {
-                            return pgDumpPath;
-                        }
-                    }
-                }
-            }
-
-            throw new Exception("لم يتم العثور على pg_dump. تأكد من تثبيت PostgreSQL بشكل صحيح");
-        }
-
-        /// <summary>
-        /// الحصول على مسار psql
-        /// Get psql executable path
-        /// </summary>
-        private string GetPsqlPath()
-        {
-            // 1. محاولة في PATH أولاً
-            try
-            {
-                var testProcess = new ProcessStartInfo
-                {
-                    FileName = "psql",
-                    Arguments = "--version",
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                
-                using (var process = Process.Start(testProcess))
-                {
-                    if (process != null)
-                    {
-                        process.WaitForExit();
-                        if (process.ExitCode == 0)
-                        {
-                            return "psql";
-                        }
-                    }
-                }
-            }
-            catch { }
-
-            // 2. البحث في مجلدات PostgreSQL
-            var basePaths = new[]
-            {
-                @"C:\Program Files\PostgreSQL",
-                @"C:\Program Files (x86)\PostgreSQL"
-            };
-
-            foreach (var basePath in basePaths)
-            {
-                if (Directory.Exists(basePath))
-                {
-                    var versionDirs = Directory.GetDirectories(basePath)
-                        .OrderByDescending(d => d);
-
-                    foreach (var versionDir in versionDirs)
-                    {
-                        var psqlPath = Path.Combine(versionDir, "bin", "psql.exe");
-                        if (File.Exists(psqlPath))
-                        {
-                            return psqlPath;
-                        }
-                    }
-                }
-            }
-
-            throw new Exception("لم يتم العثور على psql. تأكد من تثبيت PostgreSQL بشكل صحيح");
         }
 
         /// <summary>
