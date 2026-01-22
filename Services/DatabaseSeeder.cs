@@ -113,74 +113,77 @@ namespace MyAPIv3.Services
         }
 
         /// <summary>
-        /// إنشاء قائمة بجميع الصلاحيات
-        /// Create list of all permissions
+        /// الحصول على قائمة جميع الصلاحيات (snake_case لتوافق مع API)
+        /// Create list of all permissions (snake_case)
         /// </summary>
         private List<Permission> CreatePermissions()
         {
             return new List<Permission>
             {
                 // Dashboard
-                new Permission { PermissionName = "ViewDashboard", Description = "عرض لوحة التحكم" },
+                new Permission { PermissionName = "view_dashboard", Description = "عرض لوحة التحكم" },
                 
                 // Products
-                new Permission { PermissionName = "ViewProducts", Description = "عرض المنتجات" },
-                new Permission { PermissionName = "AddProduct", Description = "إضافة منتج" },
-                new Permission { PermissionName = "EditProduct", Description = "تعديل منتج" },
-                new Permission { PermissionName = "DeleteProduct", Description = "حذف منتج" },
+                new Permission { PermissionName = "view_products", Description = "عرض المنتجات" },
+                new Permission { PermissionName = "create_product", Description = "إضافة منتج" },
+                new Permission { PermissionName = "edit_product", Description = "تعديل منتج" },
+                new Permission { PermissionName = "delete_product", Description = "حذف منتج" },
                 
                 // Categories
-                new Permission { PermissionName = "ViewCategories", Description = "عرض الفئات" },
-                new Permission { PermissionName = "ManageCategories", Description = "إدارة الفئات" },
+                new Permission { PermissionName = "view_categories", Description = "عرض الفئات" },
+                new Permission { PermissionName = "manage_categories", Description = "إدارة الفئات" },
                 
                 // Units
-                new Permission { PermissionName = "ViewUnits", Description = "عرض الوحدات" },
-                new Permission { PermissionName = "ManageUnits", Description = "إدارة الوحدات" },
+                new Permission { PermissionName = "view_units", Description = "عرض الوحدات" },
+                new Permission { PermissionName = "manage_units", Description = "إدارة الوحدات" },
                 
                 // Invoices
-                new Permission { PermissionName = "ViewInvoices", Description = "عرض الفواتير" },
-                new Permission { PermissionName = "CreateInvoice", Description = "إنشاء فاتورة" },
-                new Permission { PermissionName = "EditInvoice", Description = "تعديل فاتورة" },
-                new Permission { PermissionName = "DeleteInvoice", Description = "حذف فاتورة" },
+                new Permission { PermissionName = "view_invoices", Description = "عرض الفواتير" },
+                new Permission { PermissionName = "create_invoice", Description = "إنشاء فاتورة" },
+                new Permission { PermissionName = "edit_invoice", Description = "تعديل فاتورة" },
+                new Permission { PermissionName = "delete_invoice", Description = "حذف فاتورة" },
                 
                 // Sales
-                new Permission { PermissionName = "ViewSales", Description = "عرض المبيعات" },
-                new Permission { PermissionName = "ManageSales", Description = "إدارة المبيعات" },
+                new Permission { PermissionName = "view_sales", Description = "عرض المبيعات" },
+                new Permission { PermissionName = "manage_sales", Description = "إدارة المبيعات" },
                 
                 // Purchases
-                new Permission { PermissionName = "ViewPurchases", Description = "عرض المشتريات" },
-                new Permission { PermissionName = "ManagePurchases", Description = "إدارة المشتريات" },
+                new Permission { PermissionName = "view_purchases", Description = "عرض المشتريات" },
+                new Permission { PermissionName = "manage_purchases", Description = "إدارة المشتريات" },
                 
                 // Returns
-                new Permission { PermissionName = "ViewReturns", Description = "عرض المرتجعات" },
-                new Permission { PermissionName = "ManageReturns", Description = "إدارة المرتجعات" },
+                new Permission { PermissionName = "view_returns", Description = "عرض المرتجعات" },
+                new Permission { PermissionName = "manage_returns", Description = "إدارة المرتجعات" },
                 
                 // Customers & Suppliers
-                new Permission { PermissionName = "ViewPersons", Description = "عرض العملاء والموردين" },
-                new Permission { PermissionName = "ManagePersons", Description = "إدارة العملاء والموردين" },
+                new Permission { PermissionName = "view_persons", Description = "عرض العملاء والموردين" },
+                new Permission { PermissionName = "manage_persons", Description = "إدارة العملاء والموردين" },
                 
                 // Debts
-                new Permission { PermissionName = "ViewDebts", Description = "عرض الديون" },
-                new Permission { PermissionName = "ManageDebts", Description = "إدارة الديون" },
+                new Permission { PermissionName = "view_debts", Description = "عرض الديون" },
+                new Permission { PermissionName = "manage_debts", Description = "إدارة الديون" },
                 
                 // Users
-                new Permission { PermissionName = "ViewUsers", Description = "عرض المستخدمين" },
-                new Permission { PermissionName = "ManageUsers", Description = "إدارة المستخدمين" },
+                new Permission { PermissionName = "view_users", Description = "عرض المستخدمين" },
+                new Permission { PermissionName = "manage_users", Description = "إدارة المستخدمين" }, // For general management
+                new Permission { PermissionName = "create_user", Description = "إنشاء مستخدم" },
+                new Permission { PermissionName = "edit_user", Description = "تعديل مستخدم" },
+                new Permission { PermissionName = "delete_user", Description = "حذف مستخدم" },
                 
                 // Roles
-                new Permission { PermissionName = "ViewRoles", Description = "عرض الأدوار" },
-                new Permission { PermissionName = "ManageRoles", Description = "إدارة الأدوار" },
+                new Permission { PermissionName = "view_roles", Description = "عرض الأدوار" },
+                new Permission { PermissionName = "manage_roles", Description = "إدارة الأدوار" },
                 
                 // Reports
-                new Permission { PermissionName = "ViewReports", Description = "عرض التقارير" },
-                new Permission { PermissionName = "GenerateReports", Description = "إنشاء التقارير" },
+                new Permission { PermissionName = "view_reports", Description = "عرض التقارير" },
+                new Permission { PermissionName = "generate_reports", Description = "إنشاء التقارير" },
                 
                 // Settings
-                new Permission { PermissionName = "ViewSettings", Description = "عرض الإعدادات" },
-                new Permission { PermissionName = "ManageSettings", Description = "إدارة الإعدادات" },
+                new Permission { PermissionName = "view_settings", Description = "عرض الإعدادات" },
+                new Permission { PermissionName = "manage_settings", Description = "إدارة الإعدادات" },
                 
                 // Backup
-                new Permission { PermissionName = "ManageBackup", Description = "إدارة النسخ الاحتياطي" }
+                new Permission { PermissionName = "manage_backup", Description = "إدارة النسخ الاحتياطي" }
             };
         }
     }
