@@ -184,6 +184,9 @@ if (!app.Environment.IsDevelopment())
 // Enable CORS
 app.UseCors();
 
+// ✨ Enable static files serving (for logos, etc.)
+app.UseStaticFiles();
+
 // Rate Limiting
 app.UseIpRateLimiting();
 
