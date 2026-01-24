@@ -212,48 +212,111 @@ namespace MyAPIv3.Controllers
         }
 
         private async Task<SalesReportDto> GetSalesReportInternal(
-            List<Invoice> allInvoices, DateTime startDate, DateTime endDate)
+    List<Invoice> allInvoices, DateTime startDate, DateTime endDate)
+{
+    var salesInvoices = allInvoices
+        .Where(i => i.InvoiceType == "Sale")
+        .ToList();
+
+    var totalSales = salesInvoices.Sum(i => i.TotalAmount);
+    var cashSales = salesInvoices
+        .Where(i => i.PaymentMethod?.Contains("نقدي") == true ||
+                    i.PaymentMethod?.ToLower().Contains("cash") == true)
+        .Sum(i => i.TotalAmount);
+    var creditSales = totalSales - cashSales;
+
+    // =====================================
+    // حساب المرتجعات من العملاء
+    // =====================================
+    var customerReturns = await _context.Returns
+        .Where(r => r.ReturnType == "ReturnFromCustomer" &&
+                    r.ReturnDate.HasValue &&
+                    r.ReturnDate.Value >= startDate &&
+                    r.ReturnDate.Value <= endDate)
+        .Include(r => r.ReturnProducts)
+        .ToListAsync();
+
+    // حساب إجمالي قيمة المرتجعات
+    decimal totalReturns = 0;
+    foreach (var returnItem in customerReturns)
+    {
+        if (returnItem.ReturnProducts != null)
         {
-            var salesInvoices = allInvoices
-                .Where(i => i.InvoiceType == "Sale")
-                .ToList();
-
-            var totalSales = salesInvoices.Sum(i => i.TotalAmount);
-            var cashSales = salesInvoices
-                .Where(i => i.PaymentMethod?.Contains("نقدي") == true ||
-                            i.PaymentMethod?.ToLower().Contains("cash") == true)
-                .Sum(i => i.TotalAmount);
-            var creditSales = totalSales - cashSales;
-
-            // Top products
-            var topProducts = salesInvoices
-                .SelectMany(i => i.InvoiceProducts)
-                .GroupBy(ip => new { ip.ProductId, ip.Product!.ProductName })
-                .Select(g => new TopProductDto
-                {
-                    ProductName = g.Key.ProductName,
-                    QuantitySold = g.Sum(x => x.Quantity),
-                    Revenue = g.Sum(x => x.Subtotal)
-                })
-                .OrderByDescending(x => x.Revenue)
-                .Take(10)
-                .ToList();
-
-            var avgInvoiceValue = salesInvoices.Count > 0
-                ? totalSales / salesInvoices.Count
-                : 0;
-
-            return new SalesReportDto
+            foreach (var returnProduct in returnItem.ReturnProducts)
             {
-                TotalSales = totalSales,
-                CashSales = cashSales,
-                CreditSales = creditSales,
-                InvoicesCount = salesInvoices.Count,
-                AverageInvoiceValue = avgInvoiceValue,
-                TopProducts = topProducts
-            };
+                // استخدام UnitPrice إذا كان متوفراً، وإلا نحاول الحصول عليه من الفاتورة الأصلية
+                decimal unitPrice = returnProduct.UnitPrice ?? 0;
+                totalReturns += returnProduct.Quantity * unitPrice;
+            }
         }
+    }
 
+    // حساب صافي المبيعات
+    var netSales = totalSales - totalReturns;
+
+    // =====================================
+    // حساب أفضل المنتجات مبيعاً (مع خصم المرتجعات)
+    // =====================================
+    
+    // جمع الكميات المباعة
+    var productSales = salesInvoices
+        .SelectMany(i => i.InvoiceProducts)
+        .GroupBy(ip => new { ip.ProductId, ip.Product!.ProductName })
+        .Select(g => new
+        {
+            ProductId = g.Key.ProductId,
+            ProductName = g.Key.ProductName,
+            QuantitySold = g.Sum(x => x.Quantity),
+            Revenue = g.Sum(x => x.Subtotal)
+        })
+        .ToDictionary(x => x.ProductId);
+
+    // خصم الكميات المرتجعة
+    var returnedQuantities = customerReturns
+        .SelectMany(r => r.ReturnProducts ?? new List<ReturnProduct>())
+        .GroupBy(rp => rp.ProductId)
+        .Select(g => new
+        {
+            ProductId = g.Key,
+            ReturnedQuantity = g.Sum(x => x.Quantity),
+            ReturnedValue = g.Sum(x => x.Quantity * (x.UnitPrice ?? 0))
+        })
+        .ToDictionary(x => x.ProductId);
+
+    // دمج البيانات وحساب صافي المبيعات لكل منتج
+    var topProducts = productSales.Values
+        .Select(ps => new TopProductDto
+        {
+            ProductName = ps.ProductName,
+            QuantitySold = ps.QuantitySold - (returnedQuantities.ContainsKey(ps.ProductId) 
+                ? returnedQuantities[ps.ProductId].ReturnedQuantity 
+                : 0),
+            Revenue = ps.Revenue - (returnedQuantities.ContainsKey(ps.ProductId) 
+                ? returnedQuantities[ps.ProductId].ReturnedValue 
+                : 0)
+        })
+        .Where(p => p.QuantitySold > 0) // استبعاد المنتجات التي تم إرجاعها بالكامل
+        .OrderByDescending(x => x.Revenue)
+        .Take(10)
+        .ToList();
+
+    var avgInvoiceValue = salesInvoices.Count > 0
+        ? totalSales / salesInvoices.Count
+        : 0;
+
+    return new SalesReportDto
+    {
+        TotalSales = totalSales,
+        TotalReturns = totalReturns,
+        NetSales = netSales,
+        CashSales = cashSales,
+        CreditSales = creditSales,
+        InvoicesCount = salesInvoices.Count,
+        ReturnsCount = customerReturns.Count,
+        AverageInvoiceValue = avgInvoiceValue,
+        TopProducts = topProducts
+    };
+}
         // =====================================
         // 3. Purchases Report
         // =====================================

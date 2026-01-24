@@ -27,9 +27,12 @@ namespace MyAPIv3.DTOs
     public class SalesReportDto
     {
         public decimal TotalSales { get; set; }
+        public decimal TotalReturns { get; set; }        // إجمالي المرتجعات
+        public decimal NetSales { get; set; }            // صافي المبيعات (المبيعات - المرتجعات)
         public decimal CashSales { get; set; }
         public decimal CreditSales { get; set; }
         public int InvoicesCount { get; set; }
+        public int ReturnsCount { get; set; }            // عدد عمليات الإرجاع
         public decimal AverageInvoiceValue { get; set; }
         public List<TopProductDto> TopProducts { get; set; } = new();
     }
