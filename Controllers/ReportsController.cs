@@ -648,6 +648,18 @@ namespace MyAPIv3.Controllers
                 .OrderBy(x => x.DaysRemaining)
                 .ToList();
 
+            // All products (جديد: قائمة بجميع المنتجات)
+            var allProducts = inventories
+                .GroupBy(i => new { i.ProductId, i.Product!.ProductName })
+                .Select(g => new InventoryItemDto
+                {
+                    ProductName = g.Key.ProductName,
+                    Quantity = g.Sum(x => x.Quantity),
+                    Price = g.First().Product!.SellingPrice
+                })
+                .OrderByDescending(x => x.Quantity)
+                .ToList();
+
             return new InventoryReportDto
             {
                 TotalInventoryValue = inventoryValue,
@@ -655,7 +667,8 @@ namespace MyAPIv3.Controllers
                 LowStockCount = lowStockProducts.Count,
                 ExpiringSoonCount = expiringProducts.Count,
                 LowStockProducts = lowStockProducts,
-                ExpiringProducts = expiringProducts
+                ExpiringProducts = expiringProducts,
+                AllProducts = allProducts // إضافة القائمة الكاملة
             };
         }
     }

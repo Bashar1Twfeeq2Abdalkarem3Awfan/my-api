@@ -105,6 +105,14 @@ namespace MyAPIv3.DTOs
         public int ExpiringSoonCount { get; set; }
         public List<LowStockDto> LowStockProducts { get; set; } = new();
         public List<ExpiringProductDto> ExpiringProducts { get; set; } = new();
+        public List<InventoryItemDto> AllProducts { get; set; } = new();
+    }
+
+    public class InventoryItemDto
+    {
+        public string ProductName { get; set; } = "";
+        public decimal Quantity { get; set; }
+        public decimal Price { get; set; } // قد نحتاج لعرض السعر أيضاً
     }
 
     public class LowStockDto
