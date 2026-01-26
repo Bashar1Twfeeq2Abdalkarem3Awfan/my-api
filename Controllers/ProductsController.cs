@@ -294,7 +294,7 @@ namespace MyAPIv3.Controllers
             await _context.SaveChangesAsync();
 
             //return NoContent();
-            return OK(dto);
+            return Ok(dto);
         }
 
         // ====================
