@@ -171,7 +171,8 @@ namespace MyAPIv3.Controllers
                     throw;
             }
 
-            return NoContent();
+            // return NoContent();
+            return Ok(dto);
         }
 
         // DELETE: api/ProductUnit/5
